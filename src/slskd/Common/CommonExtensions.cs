@@ -322,9 +322,16 @@ namespace slskd
         /// <param name="remoteFilename">The fully qualified remote filename to convert.</param>
         /// <param name="baseDirectory">The base directory for the local filename.</param>
         /// <returns>The converted filename.</returns>
-        public static string ToLocalFilename(this string remoteFilename, string baseDirectory)
+        public static string ToLocalFilename(this string remoteFilename, string baseDirectory, string relativePath)
         {
-            return Path.Combine(baseDirectory, remoteFilename.ToLocalRelativeFilename());
+            if (string.IsNullOrEmpty(relativePath))
+            {
+                return Path.Combine(baseDirectory, remoteFilename.ToLocalRelativeFilename());
+            }
+            else
+            {
+                return Path.Combine(baseDirectory, relativePath.ParseProvidedRelativeFilename());
+            }
         }
 
         /// <summary>
@@ -396,6 +403,41 @@ namespace slskd
 
             var file = parts.Last().ReplaceInvalidFileNameCharacters();
             var directory = parts.Reverse().Skip(1).Take(1).Single().ReplaceInvalidFileNameCharacters();
+
+            return Path.Combine(directory, file);
+        }
+
+        /// <summary>
+        ///     Converts a fully qualified remote filename to a local filename, swapping directory characters for those specific
+        ///     to the local OS, removing any characters that are invalid for the local OS, and making the path relative to the
+        ///     remote store (including the filename and the parent folder).
+        /// </summary>
+        /// <param name="relativeFilename">The fully qualified remote filename to convert.</param>
+        /// <returns>The converted filename.</returns>
+        public static string ParseProvidedRelativeFilename(this string relativeFilename)
+        {
+            if (string.IsNullOrWhiteSpace(relativeFilename))
+            {
+                throw new ArgumentException($"Invalid remote filename; expected a non-whitespace value, received '{relativeFilename}'", nameof(relativeFilename));
+            }
+
+            // normalize path separators
+            var localizedRemoteFilename = relativeFilename.LocalizePath();
+
+            var parts = localizedRemoteFilename.Split(Path.DirectorySeparatorChar);
+
+            for (int i = 0; i < parts.Length; i++)
+            {
+                parts[i] = parts[i].ReplaceInvalidFileNameCharacters();
+            }
+
+            if (parts.Length == 1)
+            {
+                return parts.First();
+            }
+
+            var file = parts.Last();
+            var directory = string.Join(Path.DirectorySeparatorChar, parts.Take(parts.Length - 1));
 
             return Path.Combine(directory, file);
         }

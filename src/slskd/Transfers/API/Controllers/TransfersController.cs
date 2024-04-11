@@ -216,7 +216,7 @@ namespace slskd.Transfers.API
 
             try
             {
-                await Transfers.Downloads.EnqueueAsync(username, requests.Select(r => (r.Filename, r.Size)));
+                await Transfers.Downloads.EnqueueAsync(username, requests.Select(r => (r.Filename, r.Size, r.Path)));
                 return StatusCode(201);
             }
             catch (Exception ex)
