@@ -1,17 +1,17 @@
 /* eslint-disable promise/prefer-await-to-then */
-import './Browse.css';
-import * as transfers from '../../lib/transfers';
-import * as users from '../../lib/users';
-import PlaceholderSegment from '../Shared/PlaceholderSegment';
-import Directory from './Directory';
-import DirectoryTree from './DirectoryTree';
-import * as lzString from 'lz-string';
-import React, { Component } from 'react';
-import { Button, Card, Icon, Input, Loader, Segment } from 'semantic-ui-react';
+import "./Browse.css";
+import * as transfers from "../../lib/transfers";
+import * as users from "../../lib/users";
+import PlaceholderSegment from "../Shared/PlaceholderSegment";
+import Directory from "./Directory";
+import DirectoryTree from "./DirectoryTree";
+import * as lzString from "lz-string";
+import React, { Component } from "react";
+import { Button, Card, Icon, Input, Loader, Segment } from "semantic-ui-react";
 
 const initialState = {
   browseError: undefined,
-  browseState: 'idle',
+  browseState: "idle",
   browseStatus: 0,
   downloadRequest: undefined,
   info: {
@@ -23,9 +23,9 @@ const initialState = {
   interval: undefined,
   selectedDirectory: {},
   selectedFiles: [],
-  separator: '\\',
+  separator: "\\",
   tree: [],
-  username: '',
+  username: "",
 };
 
 class Browse extends Component {
@@ -45,42 +45,48 @@ class Browse extends Component {
       () => this.saveState(),
     );
 
-    document.addEventListener('keyup', this.keyUp, false);
+    document.addEventListener("keyup", this.keyUp, false);
   }
 
   componentWillUnmount() {
     clearInterval(this.state.interval);
     this.setState({ interval: undefined });
-    document.removeEventListener('keyup', this.keyUp, false);
+    document.removeEventListener("keyup", this.keyUp, false);
   }
 
   getRequestsRecursively = (separator, directory, path) => {
-    const dirname = directory.name.split(separator).pop()
-    const relpath = path ? `${path}${separator}${dirname}` : dirname
-    let requests = directory.files.map(f => ({
-      filename: `${directory.name}${separator}${f.filename}`, path: `${relpath}${separator}${f.filename}`, size: f.size
-    })) || [];
+    const dirname = directory.name.split(separator).pop();
+    const relpath = path ? `${path}${separator}${dirname}` : dirname;
+    let requests =
+      directory.files.map((f) => ({
+        filename: `${directory.name}${separator}${f.filename}`,
+        path: `${relpath}${separator}${f.filename}`,
+        size: f.size,
+      })) || [];
     for (const child of directory.children || []) {
-      requests = requests.concat(this.getRequestsRecursively(separator, child, relpath));
+      requests = requests.concat(
+        this.getRequestsRecursively(separator, child, relpath),
+      );
     }
 
     console.log(requests);
 
     return requests;
-  }
+  };
 
   handleDownloadRecursively = (username, separator, selectedDirectory) => {
-    this.setState({ downloadRequest: 'inProgress' }, async () => {
+    this.setState({ downloadRequest: "inProgress" }, async () => {
       try {
-        const requests = this.getRequestsRecursively(separator, selectedDirectory, "") || [];
+        const requests =
+          this.getRequestsRecursively(separator, selectedDirectory, "") || [];
         console.log(JSON.stringify(requests));
         await transfers.download({ files: requests, username });
 
-        this.setState({ downloadRequest: 'complete' });
+        this.setState({ downloadRequest: "complete" });
       } catch (error) {
         this.setState({
           downloadError: error.response,
-          downloadRequest: 'error',
+          downloadRequest: "error",
         });
       }
     });
@@ -90,7 +96,7 @@ class Browse extends Component {
     const username = this.inputtext.inputRef.current.value;
 
     this.setState(
-      { browseError: undefined, browseState: 'pending', username },
+      { browseError: undefined, browseState: "pending", username },
       () => {
         users
           .browse({ username })
@@ -105,8 +111,8 @@ class Browse extends Component {
             const fileCount = directories.reduce((accumulator, directory) => {
               // examine each directory as we process it to see if it contains \ or /, and set separator accordingly
               if (!separator) {
-                if (directory.name.includes('\\')) separator = '\\';
-                else if (directory.name.includes('/')) separator = '/';
+                if (directory.name.includes("\\")) separator = "\\";
+                else if (directory.name.includes("/")) separator = "/";
               }
 
               return accumulator + directory.fileCount;
@@ -135,14 +141,14 @@ class Browse extends Component {
           })
           .then(() =>
             this.setState(
-              { browseError: undefined, browseState: 'complete' },
+              { browseError: undefined, browseState: "complete" },
               () => {
                 this.saveState();
               },
             ),
           )
           .catch((error) =>
-            this.setState({ browseError: error, browseState: 'error' }),
+            this.setState({ browseError: error, browseState: "error" }),
           );
       },
     );
@@ -155,17 +161,17 @@ class Browse extends Component {
     });
   };
 
-  keyUp = (event) => (event.key === 'Escape' ? this.clear() : '');
+  keyUp = (event) => (event.key === "Escape" ? this.clear() : "");
 
   saveState = () => {
     this.inputtext.inputRef.current.value = this.state.username;
     this.inputtext.inputRef.current.disabled =
-      this.state.browseState !== 'idle';
+      this.state.browseState !== "idle";
 
     const storeToLocalStorage = () => {
       try {
         localStorage.setItem(
-          'soulseek-example-browse-state',
+          "soulseek-example-browse-state",
           lzString.compress(JSON.stringify(this.state)),
         );
       } catch (error) {
@@ -186,7 +192,7 @@ class Browse extends Component {
     this.setState(
       JSON.parse(
         lzString.decompress(
-          localStorage.getItem('soulseek-example-browse-state') || '',
+          localStorage.getItem("soulseek-example-browse-state") || "",
         ),
       ) || initialState,
     );
@@ -194,7 +200,7 @@ class Browse extends Component {
 
   fetchStatus = () => {
     const { browseState, username } = this.state;
-    if (browseState === 'pending') {
+    if (browseState === "pending") {
       users.getBrowseStatus({ username }).then((response) =>
         this.setState({
           browseStatus: response.data,
@@ -249,9 +255,7 @@ class Browse extends Component {
   };
 
   selectDirectory = (directory) => {
-    this.setState({ selectedDirectory: directory }, () =>
-      this.saveState(),
-    );
+    this.setState({ selectedDirectory: directory }, () => this.saveState());
   };
 
   handleDeselectDirectory = () => {
@@ -273,7 +277,7 @@ class Browse extends Component {
       username,
     } = this.state;
     const { locked, name } = selectedDirectory;
-    const pending = browseState === 'pending';
+    const pending = browseState === "pending";
 
     const emptyTree = !(tree && tree.length > 0);
 
@@ -284,22 +288,16 @@ class Browse extends Component {
 
     return (
       <div className="search-container">
-        <Segment
-          className="browse-segment"
-          raised
-        >
+        <Segment className="browse-segment" raised>
           <div className="browse-segment-icon">
-            <Icon
-              name="folder open"
-              size="big"
-            />
+            <Icon name="folder open" size="big" />
           </div>
           <Input
             action={
               !pending &&
-              (browseState === 'idle'
-                ? { icon: 'search', onClick: this.browse }
-                : { color: 'red', icon: 'x', onClick: this.clear })
+              (browseState === "idle"
+                ? { icon: "search", onClick: this.browse }
+                : { color: "red", icon: "x", onClick: this.clear })
             }
             className="search-input"
             disabled={pending}
@@ -311,19 +309,14 @@ class Browse extends Component {
               />
             }
             loading={pending}
-            onKeyUp={(event) => (event.key === 'Enter' ? this.browse() : '')}
+            onKeyUp={(event) => (event.key === "Enter" ? this.browse() : "")}
             placeholder="Username"
             ref={(input) => (this.inputtext = input)}
             size="big"
           />
         </Segment>
         {pending ? (
-          <Loader
-            active
-            className="search-loader"
-            inline="centered"
-            size="big"
-          >
+          <Loader active className="search-loader" inline="centered" size="big">
             Downloaded {Math.round(browseStatus.percentComplete || 0)}% of
             Response
           </Loader>
@@ -339,21 +332,15 @@ class Browse extends Component {
                     icon="folder open"
                   />
                 ) : (
-                  <Card
-                    className="browse-tree-card"
-                    raised
-                  >
+                  <Card className="browse-tree-card" raised>
                     <Card.Content>
                       <Card.Header>
-                        <Icon
-                          color="green"
-                          name="circle"
-                        />
+                        <Icon color="green" name="circle" />
                         {username}
                       </Card.Header>
                       <Card.Meta className="browse-meta">
                         <span>
-                          {`${info.files + info.lockedFiles} files in ${info.directories + info.lockedDirectories} directories (including ${info.lockedFiles} files in ${info.lockedDirectories} locked directories)`}{' '}
+                          {`${info.files + info.lockedFiles} files in ${info.directories + info.lockedDirectories} directories (including ${info.lockedFiles} files in ${info.lockedDirectories} locked directories)`}{" "}
                           {/* eslint-disable-line max-len */}
                         </span>
                       </Card.Meta>
@@ -368,9 +355,15 @@ class Browse extends Component {
                         <Button
                           color="green"
                           content="Download Folder"
-                          disabled={downloadRequest === 'inProgress'}
+                          disabled={downloadRequest === "inProgress"}
                           icon="download"
-                          onClick={() => this.handleDownloadRecursively(username, separator, selectedDirectory)}
+                          onClick={() =>
+                            this.handleDownloadRecursively(
+                              username,
+                              separator,
+                              selectedDirectory,
+                            )
+                          }
                         />
                       )}
                     </Card.Content>
