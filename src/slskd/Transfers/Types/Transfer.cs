@@ -31,6 +31,7 @@ namespace slskd.Transfers
         public TransferDirection Direction { get; init; }
         public string Filename { get; init; }
         public long Size { get; set; }
+        public string Path { get; set; }
         public long StartOffset { get; init; }
 
         public TransferStates State { get; set; }

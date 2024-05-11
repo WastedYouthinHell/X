@@ -58,7 +58,7 @@ namespace slskd.Transfers.Downloads
         /// <exception cref="ArgumentException">Thrown when the username is null or an empty string.</exception>
         /// <exception cref="ArgumentException">Thrown when no files are requested.</exception>
         /// <exception cref="AggregateException">Thrown when at least one of the requested files throws.</exception>
-        Task EnqueueAsync(string username, IEnumerable<(string Filename, long Size)> files);
+        Task EnqueueAsync(string username, IEnumerable<(string Filename, long Size, string Path)> files);
 
         /// <summary>
         ///     Finds a single download matching the specified <paramref name="expression"/>.
@@ -177,7 +177,7 @@ namespace slskd.Transfers.Downloads
         /// <exception cref="ArgumentException">Thrown when the username is null or an empty string.</exception>
         /// <exception cref="ArgumentException">Thrown when no files are requested.</exception>
         /// <exception cref="AggregateException">Thrown when at least one of the requested files throws.</exception>
-        public Task EnqueueAsync(string username, IEnumerable<(string Filename, long Size)> files)
+        public Task EnqueueAsync(string username, IEnumerable<(string Filename, long Size, string Path)> files)
         {
             if (string.IsNullOrEmpty(username))
             {
@@ -191,7 +191,7 @@ namespace slskd.Transfers.Downloads
 
             return EnqueueAsyncInternal(username, files);
 
-            async Task EnqueueAsyncInternal(string username, IEnumerable<(string Filename, long Size)> files)
+            async Task EnqueueAsyncInternal(string username, IEnumerable<(string Filename, long Size, string Path)> files)
             {
                 try
                 {
@@ -216,6 +216,7 @@ namespace slskd.Transfers.Downloads
                             Direction = TransferDirection.Download,
                             Filename = file.Filename,
                             Size = file.Size,
+                            Path = file.Path,
                             StartOffset = 0,
                             RequestedAt = DateTime.UtcNow,
                         };
@@ -285,7 +286,7 @@ namespace slskd.Transfers.Downloads
                                 var completedTransfer = await Client.DownloadAsync(
                                     username: username,
                                     remoteFilename: file.Filename,
-                                    outputStreamFactory: () => Task.FromResult(GetLocalFileStream(file.Filename, OptionsMonitor.CurrentValue.Directories.Incomplete)),
+                                    outputStreamFactory: () => Task.FromResult(GetLocalFileStream(file.Filename, OptionsMonitor.CurrentValue.Directories.Incomplete, file.Path)),
                                     size: file.Size,
                                     startOffset: 0,
                                     token: null,
@@ -304,7 +305,7 @@ namespace slskd.Transfers.Downloads
                                 // this would be the ideal place to hook in a generic post-download task processor for now, we'll
                                 // just carry out hard coded behavior. these carry the risk of failing the transfer, and i could
                                 // argue both ways for that being the correct behavior. revisit this later.
-                                var finalFilename = MoveFile(file.Filename, OptionsMonitor.CurrentValue.Directories.Incomplete, OptionsMonitor.CurrentValue.Directories.Downloads);
+                                var finalFilename = MoveFile(file.Filename, OptionsMonitor.CurrentValue.Directories.Incomplete, OptionsMonitor.CurrentValue.Directories.Downloads, file.Path);
 
                                 Log.Debug("Moved file to {Destination}", finalFilename);
 
@@ -588,9 +589,9 @@ namespace slskd.Transfers.Downloads
             context.SaveChanges();
         }
 
-        private static Stream GetLocalFileStream(string remoteFilename, string saveDirectory)
+        private static Stream GetLocalFileStream(string remoteFilename, string saveDirectory, string relativePath)
         {
-            var localFilename = remoteFilename.ToLocalFilename(baseDirectory: saveDirectory);
+            var localFilename = remoteFilename.ToLocalFilename(baseDirectory: saveDirectory, relativePath);
             var path = Path.GetDirectoryName(localFilename);
 
             if (!Directory.Exists(path))
@@ -601,10 +602,10 @@ namespace slskd.Transfers.Downloads
             return new FileStream(localFilename, FileMode.Create);
         }
 
-        private static string MoveFile(string filename, string sourceDirectory, string destinationDirectory)
+        private static string MoveFile(string filename, string sourceDirectory, string destinationDirectory, string relativePath)
         {
-            var sourceFilename = filename.ToLocalFilename(sourceDirectory);
-            var destinationFilename = filename.ToLocalFilename(destinationDirectory);
+            var sourceFilename = filename.ToLocalFilename(sourceDirectory, relativePath);
+            var destinationFilename = filename.ToLocalFilename(destinationDirectory, relativePath);
 
             var destinationPath = Path.GetDirectoryName(destinationFilename);
 
@@ -621,7 +622,7 @@ namespace slskd.Transfers.Downloads
                 while (File.Exists(destinationFilename))
                 {
                     string filenameUTC = $"{extensionlessFilename}_{DateTime.UtcNow.Ticks}{extension}";
-                    destinationFilename = filenameUTC.ToLocalFilename(destinationDirectory);
+                    destinationFilename = filenameUTC.ToLocalFilename(destinationDirectory, string.Empty);
                 }
             }
 
